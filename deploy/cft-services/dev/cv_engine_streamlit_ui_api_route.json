@@ -1,0 +1,67 @@
+
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The template for API gateway route",
+  "Parameters": {
+    "apiIntegration": {
+      "Type": "String"
+    },
+    "apiId": {
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "myRoute1": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {"Ref": "apiId"},
+        "RouteKey": "GET /api/v0/exercise-definition/{batch_uuid}/status",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "apiIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "myRoute2": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {"Ref": "apiId"},
+        "RouteKey": "GET /api/v0/exercise-definition/healthcheck",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {"Ref": "apiIntegration"}
+            ]
+          ]
+        }
+      }
+    },
+    "myRoute3": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {"Ref": "apiId"},
+        "RouteKey": "POST /api/v0/exercise-definition/create_pose_request",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "apiIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,211 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The template used to create all resources",
+  "Parameters": {
+    "projectName": {
+      "Type": "String"
+    },
+    "cftModulesS3Bucket": {
+      "Type": "String"
+    },
+    "cftServicesS3Bucket": {
+      "Type": "String"
+    },
+    "s3BucketName": {
+      "Type": "String"
+    },
+    "region": {
+      "Type": "String"
+    },
+    "ecrUriService": {
+      "Type": "String"
+    },
+    "taskCvEngine213": {
+      "Type": "String"
+    },
+    "taskCvEngine2142Arm": {
+      "Type": "String"
+    },
+    "taskCvEngine2142Amd": {
+      "Type": "String"
+    },
+    "serviceContainerName": {
+      "Type": "String"
+    },
+    "taskCvEngine213ContainerName": {
+      "Type": "String"
+    },
+    "taskCvEngine2142ArmContainerName": {
+      "Type": "String"
+    },
+    "taskCvEngine2142AmdContainerName": {
+      "Type": "String"
+    },
+    "taskCvEngine213Pattern": {
+      "Type": "String"
+    },
+    "taskCvEngine2142ArmPattern": {
+      "Type": "String"
+    },
+    "taskCvEngine2142AmdPattern": {
+      "Type": "String"
+    },
+    "cpu": {
+      "Type": "String"
+    },
+    "memory": {
+      "Type": "String"
+    },
+    "cpuArchitectureArm": {
+      "Type": "String"
+    },
+    "cpuArchitectureAmd": {
+      "Type": "String"
+    },
+    "operatingSystemFamily": {
+      "Type": "String"
+    },
+    "environmentFilesArn": {
+      "Type": "String"
+    },
+    "healthCheckPath": {
+      "Type": "String"
+    },
+    "listenerPort": {
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "dependencies": {
+      "Description": "Creating VPC,Subnet and networking resources",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftServicesS3Bucket}/cv_engine_dependencies.json",
+            {
+              "cftServicesS3Bucket": {
+                "Ref": "cftServicesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "projectName": {
+            "Ref": "projectName"
+          },
+          "cftModulesS3Bucket": {
+            "Ref": "cftModulesS3Bucket"
+          },
+          "s3BucketName": {
+            "Ref": "s3BucketName"
+          }
+        }
+      }
+    },
+    "services": {
+      "Description": "Creating ECS role policy.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftServicesS3Bucket}/cv_engine_services.json",
+            {
+              "cftServicesS3Bucket": {
+                "Ref": "cftServicesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "projectName": {
+            "Ref": "projectName"
+          },
+          "region": {
+            "Ref": "region"
+          },
+          "ecrUriService": {
+            "Ref": "ecrUriService"
+          },
+          "taskCvEngine213": {
+            "Ref": "taskCvEngine213"
+          },
+          "taskCvEngine2142Arm": {
+            "Ref": "taskCvEngine2142Arm"
+          },
+          "taskCvEngine2142Amd": {
+            "Ref": "taskCvEngine2142Amd"
+          },
+          "serviceContainerName": {
+            "Ref": "serviceContainerName"
+          },
+          "taskCvEngine213ContainerName": {
+            "Ref": "taskCvEngine213ContainerName"
+          },
+          "taskCvEngine2142ArmContainerName": {
+            "Ref": "taskCvEngine2142ArmContainerName"
+          },
+          "taskCvEngine2142AmdContainerName": {
+            "Ref": "taskCvEngine2142AmdContainerName"
+          },
+          "taskCvEngine213Pattern": {
+            "Ref": "taskCvEngine213Pattern"
+          },
+          "taskCvEngine2142ArmPattern": {
+            "Ref": "taskCvEngine2142ArmPattern"
+          },
+          "taskCvEngine2142AmdPattern": {
+            "Ref": "taskCvEngine2142AmdPattern"
+          },
+          "cftModulesS3Bucket": {
+            "Ref": "cftModulesS3Bucket"
+          },
+          "cftServicesS3Bucket": {
+            "Ref": "cftServicesS3Bucket"
+          },
+          "logGroupEndpointName": {
+            "Fn::Sub": "/endpoint/${projectName}"
+          },
+          "cpu": {
+            "Ref": "cpu"
+          },
+          "memory": {
+            "Ref": "memory"
+          },
+          "cpuArchitectureArm": {
+            "Ref": "cpuArchitectureArm"
+          },
+          "cpuArchitectureAmd": {
+            "Ref": "cpuArchitectureAmd"
+          },
+          "operatingSystemFamily": {
+            "Ref": "operatingSystemFamily"
+          },
+          "environmentFilesArn": {
+            "Ref": "environmentFilesArn"
+          },
+          "healthCheckPath": {
+            "Ref": "healthCheckPath"
+          },
+          "listenerPort": {
+            "Ref": "listenerPort"
+          }
+        }
+      },
+      "DependsOn": [
+        "dependencies"
+      ]
+    }
+  },
+  "Outputs": {
+    "projectEndpoint": {
+      "Description": "The endpoint.",
+      "Value": {
+        "Fn::GetAtt": [
+          "services",
+          "Outputs.apiEndpoint"
+        ]
+      }
+    }
+  }
+}

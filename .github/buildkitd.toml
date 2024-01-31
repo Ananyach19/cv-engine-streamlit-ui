@@ -1,0 +1,9 @@
+debug = true
+
+[worker.oci]
+  enabled = true
+  platforms = ["linux/arm64" ]
+  max-parallelism = 4
+
+[worker.containerd]
+  platforms = ["linux/arm64" ]

@@ -1,0 +1,69 @@
+name: Deploy to STAGE CV Cluster
+env:
+  AWS_DEFAULT_REGION: us-west-2
+  AWS_ECR: 130290943060.dkr.ecr.us-west-2.amazonaws.com
+  DISABLE_DB_SYNCHRONIZE: true
+  GITHUB_ACCESS_TOKEN: ${{ secrets.SHARED_PACKAGES_READ }}
+  GIT_SHA: ${{ github.event.pull_request.head.sha || github.event.push.head.sha }}
+  LATEST_TAG: 'latest'
+  TAG: 'latest'
+  IMAGE-TAG: 'latest'
+  SERVICE_NAME: 'cv-engine-service'
+on:
+  workflow_run:
+    workflows:
+      - "Deploy to DEV CV Cluster"
+    types:
+      - completed
+    branches:
+      - main
+      
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  aws_service_and_Infra_creation_updation:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.SHARED_PACKAGES_READ }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::130290943060:role/gha-actions-assume-role
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          role-session-name: GhaActionsAwsResourcesCreationUpdation
+      - name: Set the folder to monitor changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            app:
+              - 'app/**'
+            stage:
+              - 'deploy/cft-services/stage/**'
+              - 'scripts/deploy_to_stage.sh'
+              - 'scripts/update_ecs_service.sh'
+      - name: Check bucket for the cft-service
+        run: |
+          chmod +x scripts/services_cft_bucket.sh
+          AWS_REGION=${{ env.AWS_DEFAULT_REGION }} ./scripts/services_cft_bucket.sh
+      - name: Push file to S3
+        if: steps.changes.outputs.stage == 'true'
+        run: make upload_to_s3 ENV=stage
+      - name: Create/Update the AWS Infra
+        if: steps.changes.outputs.stage == 'true'
+        run: |
+          chmod +x scripts/deploy_to_stage.sh
+          ./scripts/deploy_to_stage.sh
+      - name: Update ECS service
+        if: steps.changes.outputs.app == 'true'
+        run: |
+          chmod +x scripts/update_ecs_service.sh
+          ENV=stage ./scripts/update_ecs_service.sh
+      - name: Delete the files in S3 bucket
+        run: aws s3 rm s3://hh-cv-services-deployment-bucket/cv-engine-stage --recursive --exclude "*" --include "*.json" --include "*.yml" --include "*.yaml"
+      

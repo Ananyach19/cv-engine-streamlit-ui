@@ -1,0 +1,363 @@
+name: CI
+env:
+  AWS_DEFAULT_REGION: us-west-2
+  AWS_ECR: 130290943060.dkr.ecr.us-west-2.amazonaws.com
+  DISABLE_DB_SYNCHRONIZE: true
+  GITHUB_ACCESS_TOKEN: ${{ secrets.SHARED_PACKAGES_READ }}
+  GIT_SHA: ${{ github.event.pull_request.head.sha || github.event.push.head.sha }}
+  LACEWORK_ACCOUNT_NAME: ${{ secrets.LACEWORK_ACCOUNT_NAME }}
+  LACEWORK_CI_CONTAINER_SCAN_ACCESS_TOKEN: ${{ secrets.LACEWORK_CI_CONTAINER_SCAN_ACCESS_TOKEN }}
+  LATEST_TAG: 'latest'
+  TAG: 'latest'
+  IMAGE-TAG: 'latest'
+  SERVICE_NAME: 'cv-engine-service'
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Environment
+        uses: ./.github/actions/env-setup
+      - name: Linting check
+        run: |
+          echo "Checking linting against $(poetry run black --version)"
+          poetry run black app --check
+      - name: Static typing checks
+        run: poetry run mypy app/app
+      - name: Unused imports
+        run: poetry run flake8 --select=F401,T201 app
+      - name: Static code security checks
+        run: poetry run bandit -x app/app/tests,/app/alembic --ini .bandit -r app/app
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.GIT_SHA }}
+          lfs: true
+      - name: Set up Python 3
+        uses: actions/setup-python@v4
+        with:
+          python-version-file: '.python-version'
+      - name: Install poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+      - name: Load cached venv
+        id: cached-poetry-dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: poetry-${GITHUB_REF##*/}-${{ hashFiles('**/poetry.lock') }}
+      - name: Install dependencies
+        run: |
+          poetry config --local virtualenvs.in-project true
+          poetry install
+      - name: Dependency vulnerability checks
+        id: safety-check
+        run: poetry run safety check 
+      - name: Static security checks
+        run: poetry run bandit -x app/app/tests,/app/alembic --ini .bandit -r app/app
+  # unit_tests:
+  #   runs-on: ubuntu-22.04
+  #   env:
+  #     WRENGINE_FORCE_TFLITE_XNNPACK: true
+  #   steps:
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ env.GIT_SHA }}
+  #         lfs: true
+  #     - name: Set up Environment
+  #       uses: ./.github/actions/env-setup
+  #     - name: Github credentials
+  #       run: git config --global url."https://${GITHUB_ACCESS_TOKEN}:@github.com/".insteadOf "https://github.com/"
+  #     - name: Check Python version
+  #       run: python --version
+  #     - name: Install poetry
+  #       run: pipx install poetry
+  #     - name: Check Python version
+  #       run: python --version
+  #     - name: Load cached venv
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: '3.10'
+  #         cache: 'poetry'
+  #     - name: Check Python version
+  #       run: python --version
+  #     - name: Install dependencies
+  #       run: |
+  #         poetry config --local virtualenvs.in-project true
+  #         poetry install
+  #     - name: Check Python version
+  #       run: python --version
+  #     - name: installing cv-engine script
+  #       run: |
+  #         chmod +x linux_deps.sh
+  #         poetry run bash ./linux_deps.sh
+  #         poetry add install numpy
+  #         poetry add install opencv-python
+  #     - name: Check Python version
+  #       run: python --version
+  #     - name: setup
+  #       run: |
+  #         PYTHON_WHEEL="app/app/cv-engines/2.14.2/ubuntu-22.04/AMD/wrnch_internal-2.14.2.post32235243581-py3-none-any.whl"; \
+  #         poetry add $PYTHON_WHEEL 
+  #     - name: Unit tests
+  #       working-directory: .
+  #       env:
+  #         COVERAGE_FILE: .coverage.unit
+  #         ENVIRONMENT: test
+  #       run: DD_TRACE_ENABLED="false" poetry run pytest app/tests/ --cov=app/
+  #     - name: Store coverage report
+  #       if: always()
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: .coverage.unit
+  #         path: ./app/.coverage.unit
+
+  # code-coverage:
+  #   permissions: write-all
+  #   name: Validate code coverage
+  #   needs:
+  #     - unit_tests
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Git Checkout
+  #       uses: actions/checkout@v3
+  #       with:
+  #         ref: ${{ env.GIT_SHA }}
+  #         lfs: true
+  #     - name: Set up Python 3
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version-file: '.python-version'
+  #     - name: Install poetry
+  #       uses: snok/install-poetry@v1
+  #       with:
+  #         virtualenvs-create: true
+  #         virtualenvs-in-project: true
+  #         installer-parallel: true
+  #     - name: Load cached venv
+  #       id: cached-poetry-dependencies
+  #       uses: actions/cache@v3
+  #       with:
+  #         path: .venv
+  #         key: poetry-${GITHUB_REF##*/}-${{ hashFiles('**/poetry.lock') }}
+  #     - name: Install dependencies
+  #       run: |
+  #         poetry config --local virtualenvs.in-project true
+  #         poetry install
+  #     - name: Download unit test coverage report
+  #       uses: actions/download-artifact@v3
+  #       id: download-unit
+  #       with:
+  #         name: .coverage.unit
+  #     - name: Combine code coverage reports
+  #       run: poetry run coverage combine
+  #     - name: Produce coverage report
+  #       id: code-coverage
+  #       working-directory: ./app
+  #       run: |
+  #         cp ../.coverage .
+  #         report=$(poetry run coverage report -m)
+  #         poetry run coverage html --skip-covered --skip-empty
+  #         report="${report//'%'/'%25'}"
+  #         report="${report//$'\n'/'%0A'}"
+  #         report="${report//$'\r'/'%0D'}"
+  #         echo "report=${report}" >> $GITHUB_OUTPUT
+  #         poetry run coverage json
+  #         json=$(cat ./coverage.json)
+  #         json="${json//'%'/'%25'}"
+  #         json="${json//$'\n'/'%0A'}"
+  #         json="${json//$'\r'/'%0D'}"
+  #         # end of optional handling for multi line json
+  #         echo "json=${json}" >> $GITHUB_OUTPUT
+  #         # generate xml coverage report
+  #         poetry run coverage xml
+  #       continue-on-error: true
+  #     - uses: marocchino/sticky-pull-request-comment@v2
+  #       id: comment
+  #       with:
+  #         recreate: true
+  #         message: |
+  #           ## ---- Code coverage ----
+  #           ### lib module: ${{ fromJson(steps.code-coverage.outputs.json).totals.percent_covered_display }}%
+  #           <details>
+  #           <summary>
+  #           Show report
+
+  #           </summary>
+
+
+  #           ```bash
+  #           ${{ steps.code-coverage.outputs.report}}
+  #           ```
+
+  #           </details>
+  #     - name: Upload HTML report
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: html-report
+  #         path: ./app/coverage_html_report/index.html
+  #     - name: Upload XML report
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: coverage.xml
+  #         path: ./app/coverage.xml
+  #     - name: Verify code coverage percent
+  #       working-directory: ./app
+  #       run: poetry run coverage report
+
+  # sonar:
+  #   name: Sonar
+  #   runs-on: ubuntu-latest
+  #   needs: [code-coverage]
+  #   if: success()
+  #   env:
+  #     SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL_ITCORP }}
+  #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN_ITCORP }}
+  #     SONAR_SLACK_BOT_TOKEN: ${{ secrets.SONAR_SLACK_BOT_TOKEN }}
+    
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Set up Environment
+  #       uses: ./.github/actions/env-setup
+  #     - name: Download unit test coverage report
+  #       uses: actions/download-artifact@v3
+  #       id: download-unit
+  #       with:
+  #         name: .coverage.unit
+  #     - name: Download integration test coverage report
+  #       uses: actions/download-artifact@v3
+  #       id: download-integration
+  #       with:
+  #         name: .coverage.integration
+  #     - name: Download migration test coverage report
+  #       uses: actions/download-artifact@v3
+  #       id: download-migration
+  #       with:
+  #         name: .coverage.migration
+  #     - name: Combine code coverage reports
+  #       run: poetry run coverage combine
+  #     - name: Produce coverage report
+  #       id: code-coverage
+  #       working-directory: ./app
+  #       run: |
+  #         cp ../.coverage .
+  #         poetry run coverage xml
+  #         cp coverage.xml ../
+  #     - name: Sonar
+  #       uses: hinge-health/gha-static-code-analysis/sonar@stable
+  #       with:
+  #         coverage-artifact: coverage.xml
+  #         project-version: ${{ github.sha }}
+  #         disable-gate: ${{ contains(github.event.pull_request.labels.*.name, 'disable-sonar-gate') }}
+  
+
+  docker_build_and_push:
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+      # - unit_tests
+      - security
+      # - sonar
+    env:
+      DOCKER_BUILDKIT: "1"
+    steps:
+      - name: git checkout
+        uses: actions/checkout@v4
+        with:
+          # ref: ${{ github.event.pull_request.head.sha || github.event.push.head.sha }}
+          ref: ${{ env.GIT_SHA }}
+          lfs: 'true'
+      - name: Checkout LFS objects
+        run: git lfs pull
+      - name: checkout ml-science
+        shell: bash
+        run: |
+          cd sources
+          git clone -b NIL-56-ML-Science-Code-base-unification https://${GITHUB_ACCESS_TOKEN}:@github.com/hinge-health/ml-science
+      - name: Cache Setup Build
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+        with:
+          platforms: 'arm64,arm'
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          config: .github/buildkitd.toml
+          driver-opts: image=moby/buildkit:master
+
+      - name: Inspect builder
+        run: |
+          echo "Name: ${{ steps.buildx.outputs.name }}"
+          echo "Endpoint: ${{ steps.buildx.outputs.endpoint }}"
+          echo "Status: ${{ steps.buildx.outputs.status }}"
+          echo "Flags: ${{ steps.buildx.outputs.flags }}"
+          echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
+
+      - uses: actions/checkout@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          role-to-assume: arn:aws:iam::130290943060:role/gha-actions-assume-role
+          aws-region: ${{ env.AWS_DEFAULT_REGION }}
+          role-session-name: GhaActionsUploadDockerImageJobSession
+      - name: Debug AWS credentials
+        run: |
+          echo "AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID"
+          echo "AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY"
+          echo "AWS_SESSION_TOKEN: $AWS_SESSION_TOKEN"
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+     
+      - name: Docker build ECS service
+        run: make docker-build-service GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN}
+      - name: Docker tag ECS service
+        run: make docker-tag-service
+      - name: Docker push ECS service
+        run: make docker-push-service
+      - name: Docker tag and push latest ECS service
+        if: github.ref == 'refs/heads/main'
+        run: make docker-tag-latest-service
+
+      - name: Docker build ECS task 2.13-arm
+        run: make docker-build-2.13-arm GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN}
+      - name: Docker tag ECS task 2.13-arm
+        run: make docker-tag-2.13-arm
+      - name: Docker push ECS task 2.13-arm
+        run: make docker-push-2.13-arm
+      - name: Docker tag and push latest ECS task 2.13-arm
+        if: github.ref == 'refs/heads/main'
+        run: make docker-tag-latest-2.13-arm
+
+      - name: Docker build ECS task 2.14.2-arm
+        run: make docker-build-2.14.2-arm GITHUB_ACCESS_TOKEN=${GITHUB_ACCESS_TOKEN}
+      - name: Docker tag ECS task 2.14.2-arm
+        run: make docker-tag-2.14.2-arm
+      - name: Docker push ECS task 2.14.2-arm
+        run: make docker-push-2.14.2-arm
+      - name: Docker tag and push latest ECS task 2.14.2-arm
+        if: github.ref == 'refs/heads/main'
+        run: make docker-tag-latest-2.14.2-arm

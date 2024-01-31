@@ -1,4 +1,4 @@
-FROM Python:3.11
+FROM python:3.11
 
 WORKDIR /app
 
@@ -8,4 +8,4 @@ RUN pip install poetry && poetry install
 
 COPY . .
 
-CMD ["poetry", "run", "streamlit", "run", "app.py"]
+ENTRYPOINT ["poetry", "run", "streamlit", "run", "cv-engine-ui.py", "--server.port=8000", "--server.address=0.0.0.0"]

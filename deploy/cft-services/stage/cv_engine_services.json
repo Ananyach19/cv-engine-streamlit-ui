@@ -1,0 +1,922 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The template used to create all resources",
+  "Parameters": {
+    "projectName": {
+      "Type": "String"
+    },
+    "region": {
+      "Type": "String"
+    },
+    "ecrUriService": {
+      "Type": "String"
+    },
+    "taskCvEngine213": {
+      "Type": "String"
+    },
+    "taskCvEngine2142Arm": {
+      "Type": "String"
+    },
+    "taskCvEngine2142Amd": {
+      "Type": "String"
+    },
+    "serviceContainerName": {
+      "Type": "String"
+    },
+    "taskCvEngine213ContainerName": {
+      "Type": "String"
+    },
+    "taskCvEngine2142ArmContainerName": {
+      "Type": "String"
+    },
+    "taskCvEngine2142AmdContainerName": {
+      "Type": "String"
+    },
+    "taskCvEngine213Pattern": {
+      "Type": "String"
+    },
+    "taskCvEngine2142ArmPattern": {
+      "Type": "String"
+    },
+    "taskCvEngine2142AmdPattern": {
+      "Type": "String"
+    },
+    "cftModulesS3Bucket": {
+      "Type": "String"
+    },
+    "cftServicesS3Bucket": {
+      "Type": "String"
+    },
+    "logGroupEndpointName": {
+      "Type": "String"
+    },
+    "cpu": {
+      "Type": "String"
+    },
+    "memory": {
+      "Type": "String"
+    },
+    "cpuArchitectureArm": {
+      "Type": "String"
+    },
+    "cpuArchitectureAmd": {
+      "Type": "String"
+    },
+    "operatingSystemFamily": {
+      "Type": "String"
+    },
+    "environmentFilesArn": {
+      "Type": "String"
+    },
+    "healthCheckPath": {
+      "Type": "String"
+    },
+    "listenerPort": {
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "serviceLogsGroup": {
+      "Description": "Creating API stage.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/log_group.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "logGroupName": {
+            "Fn::Sub": "/ecs/${projectName}/${serviceContainerName}"
+          },
+          "projectName": {
+            "Ref": "projectName"
+          }
+        }
+      }
+    },
+    "CvEngine213LogsGroup": {
+      "Description": "Creating API stage.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/log_group.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "logGroupName": {
+            "Fn::Sub": "/ecs/${projectName}/${taskCvEngine213ContainerName}"
+          },
+          "projectName": {
+            "Ref": "projectName"
+          }
+        }
+      }
+    },
+    "CvEngine2142ArmLogsGroup": {
+      "Description": "Creating API stage.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/log_group.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "logGroupName": {
+            "Fn::Sub": "/ecs/${projectName}/${taskCvEngine2142ArmContainerName}"
+          },
+          "projectName": {
+            "Ref": "projectName"
+          }
+        }
+      }
+    },
+    "CvEngine2142AmdLogsGroup": {
+      "Description": "Creating API stage.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/log_group.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "logGroupName": {
+            "Fn::Sub": "/ecs/${projectName}/${taskCvEngine2142AmdContainerName}"
+          },
+          "projectName": {
+            "Ref": "projectName"
+          }
+        }
+      }
+    },
+    "serviceTaskDefinition": {
+      "Description": "Creating ecs service Task Definition",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/task_def.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "projectName": {
+            "Ref": "projectName"
+          },
+          "ecrUri": {
+            "Ref": "ecrUriService"
+          },
+          "containerName": {
+            "Ref": "serviceContainerName"
+          },
+          "awsLogsGroup": {
+            "Fn::GetAtt": [
+              "serviceLogsGroup",
+              "Outputs.name"
+            ]
+          },
+          "region": {
+            "Ref": "region"
+          },
+          "cpu": {
+            "Ref": "cpu"
+          },
+          "memory": {
+            "Ref": "memory"
+          },
+          "cpuArchitecture": {
+            "Ref": "cpuArchitectureArm"
+          },
+          "operatingSystemFamily": {
+            "Ref": "operatingSystemFamily"
+          },
+          "environmentFilesArn": {
+            "Ref": "environmentFilesArn"
+          }
+        }
+      },
+      "DependsOn": [
+        "serviceLogsGroup"
+      ]
+    },
+    "CvEngine213TaskDefinition": {
+      "Description": "Creating CvEngine213 Task Definition",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/task_def.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "projectName": {
+            "Ref": "projectName"
+          },
+          "ecrUri": {
+            "Ref": "taskCvEngine213"
+          },
+          "containerName": {
+            "Ref": "taskCvEngine213ContainerName"
+          },
+          "awsLogsGroup": {
+            "Fn::GetAtt": [
+              "CvEngine213LogsGroup",
+              "Outputs.name"
+            ]
+          },
+          "region": {
+            "Ref": "region"
+          },
+          "cpu": {
+            "Ref": "cpu"
+          },
+          "memory": {
+            "Ref": "memory"
+          },
+          "cpuArchitecture": {
+            "Ref": "cpuArchitectureArm"
+          },
+          "operatingSystemFamily": {
+            "Ref": "operatingSystemFamily"
+          },
+          "environmentFilesArn": {
+            "Ref": "environmentFilesArn"
+          }
+        }
+      },
+      "DependsOn": [
+        "CvEngine213LogsGroup"
+      ]
+    },
+    "CvEngine2142ArmTaskDefinition": {
+      "Description": "Creating createAnnotation Task Definition",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/task_def.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "projectName": {
+            "Ref": "projectName"
+          },
+          "ecrUri": {
+            "Ref": "taskCvEngine2142Arm"
+          },
+          "containerName": {
+            "Ref": "taskCvEngine2142ArmContainerName"
+          },
+          "awsLogsGroup": {
+            "Fn::GetAtt": [
+              "CvEngine2142ArmLogsGroup",
+              "Outputs.name"
+            ]
+          },
+          "region": {
+            "Ref": "region"
+          },
+          "cpu": {
+            "Ref": "cpu"
+          },
+          "memory": {
+            "Ref": "memory"
+          },
+          "cpuArchitecture": {
+            "Ref": "cpuArchitectureArm"
+          },
+          "operatingSystemFamily": {
+            "Ref": "operatingSystemFamily"
+          },
+          "environmentFilesArn": {
+            "Ref": "environmentFilesArn"
+          }
+        }
+      },
+      "DependsOn": [
+        "CvEngine2142ArmLogsGroup"
+      ]
+    },
+    "CvEngine2142AmdTaskDefinition": {
+      "Description": "Creating createAnnotation Task Definition",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/task_def.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "projectName": {
+            "Ref": "projectName"
+          },
+          "ecrUri": {
+            "Ref": "taskCvEngine2142Amd"
+          },
+          "containerName": {
+            "Ref": "taskCvEngine2142AmdContainerName"
+          },
+          "awsLogsGroup": {
+            "Fn::GetAtt": [
+              "CvEngine2142AmdLogsGroup",
+              "Outputs.name"
+            ]
+          },
+          "region": {
+            "Ref": "region"
+          },
+          "cpu": {
+            "Ref": "cpu"
+          },
+          "memory": {
+            "Ref": "memory"
+          },
+          "cpuArchitecture": {
+            "Ref": "cpuArchitectureAmd"
+          },
+          "operatingSystemFamily": {
+            "Ref": "operatingSystemFamily"
+          },
+          "environmentFilesArn": {
+            "Ref": "environmentFilesArn"
+          }
+        }
+      },
+      "DependsOn": [
+        "CvEngine2142AmdLogsGroup"
+      ]
+    },
+    "ecsService": {
+      "Description": "Creating ECS service",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/ecs_service.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "projectName": {
+            "Ref": "projectName"
+          },
+          "targetGroup": {
+            "Fn::GetAtt": [
+              "albTargetGroup",
+              "Outputs.arn"
+            ]
+          },
+          "taskDefinitionArn": {
+            "Fn::GetAtt": [
+              "serviceTaskDefinition",
+              "Outputs.arn"
+            ]
+          },
+          "containerName": {
+            "Ref": "serviceContainerName"
+          }
+        }
+      },
+      "DependsOn": [
+        "albTargetGroup",
+        "serviceTaskDefinition"
+      ]
+    },
+    "apiEndpoint": {
+      "Description": "Creating API Endpoint",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/api_http.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "projectName": {
+            "Ref": "projectName"
+          }
+        }
+      }
+    },
+    "apiIntegration": {
+      "Description": "Creating API integration.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/api_integration.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "apiId": {
+            "Fn::GetAtt": [
+              "apiEndpoint",
+              "Outputs.httpApi"
+            ]
+          },
+          "albListenerArn": {
+            "Fn::GetAtt": [
+              "albListener",
+              "Outputs.arn"
+            ]
+          }
+        }
+      },
+      "DependsOn": [
+        "albListener",
+        "apiEndpoint"
+      ]
+    },
+    "apiRoute": {
+      "Description": "Creating API routes.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftServicesS3Bucket}/cv_engine_api_route.json",
+            {
+              "cftServicesS3Bucket": {
+                "Ref": "cftServicesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "apiId": {
+            "Fn::GetAtt": [
+              "apiEndpoint",
+              "Outputs.httpApi"
+            ]
+          },
+          "apiIntegration": {
+            "Fn::GetAtt": [
+              "apiIntegration",
+              "Outputs.apiIntegration"
+            ]
+          }
+        }
+      },
+      "DependsOn": [
+        "apiEndpoint",
+        "apiIntegration"
+      ]
+    },
+    "logGroupEndpoint": {
+      "Description": "Creating API stage.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/log_group.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "logGroupName": {
+            "Ref": "logGroupEndpointName"
+          },
+          "projectName": {
+            "Ref": "projectName"
+          }
+        }
+      },
+      "DependsOn": [
+        "apiEndpoint",
+        "apiIntegration"
+      ]
+    },
+    "apiStage": {
+      "Description": "Creating API stage.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/api_stage.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "logGroupArn": {
+            "Fn::GetAtt": [
+              "logGroupEndpoint",
+              "Outputs.arn"
+            ]
+          },
+          "apiId": {
+            "Fn::GetAtt": [
+              "apiEndpoint",
+              "Outputs.httpApi"
+            ]
+          },
+          "projectName": {
+            "Ref": "projectName"
+          }
+        }
+      },
+      "DependsOn": [
+        "logGroupEndpoint",
+        "apiEndpoint",
+        "apiIntegration"
+      ]
+    },
+    "CvEngine213EventRule": {
+      "Description": "Creating getCocoJson event rule.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/event_rule.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "taskDefinitionArn": {
+            "Fn::GetAtt": [
+              "CvEngine213TaskDefinition",
+              "Outputs.arn"
+            ]
+          },
+          "pattern": {
+            "Ref": "taskCvEngine213Pattern"
+          },
+          "containerName": {
+            "Ref": "taskCvEngine213ContainerName"
+          },
+          "projectName": {
+            "Ref": "projectName"
+          }
+        }
+      },
+      "DependsOn": [
+        "CvEngine213TaskDefinition"
+      ]
+    },
+    "CvEngine2142ArmEventRule": {
+      "Description": "Creating createAnnotation event rule.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/event_rule.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "taskDefinitionArn": {
+            "Fn::GetAtt": [
+              "CvEngine2142ArmTaskDefinition",
+              "Outputs.arn"
+            ]
+          },
+          "pattern": {
+            "Ref": "taskCvEngine2142ArmPattern"
+          },
+          "containerName": {
+            "Ref": "taskCvEngine2142ArmContainerName"
+          },
+          "projectName": {
+            "Ref": "projectName"
+          }
+        }
+      },
+      "DependsOn": [
+        "CvEngine2142ArmTaskDefinition"
+      ]
+    },
+    "CvEngine2142AmdEventRule": {
+      "Description": "Creating createAnnotation event rule.",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/event_rule.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "taskDefinitionArn": {
+            "Fn::GetAtt": [
+              "CvEngine2142AmdTaskDefinition",
+              "Outputs.arn"
+            ]
+          },
+          "pattern": {
+            "Ref": "taskCvEngine2142AmdPattern"
+          },
+          "containerName": {
+            "Ref": "taskCvEngine2142AmdContainerName"
+          },
+          "projectName": {
+            "Ref": "projectName"
+          }
+        }
+      },
+      "DependsOn": [
+        "CvEngine2142AmdTaskDefinition"
+      ]
+    },
+    "albTargetGroup": {
+      "Description": "Creating alb target group",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/alb_target_group.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "projectName": {
+            "Ref": "projectName"
+          },
+          "healthCheckPath": {
+            "Ref": "healthCheckPath"
+          }
+        }
+      }
+    },
+    "albListener": {
+      "Description": "Creating alb listener",
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/alb_listener.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "targetGroupArn": {
+            "Fn::GetAtt": [
+              "albTargetGroup",
+              "Outputs.arn"
+            ]
+          },
+          "port": {
+            "Ref": "listenerPort"
+          }
+        }
+      },
+      "DependsOn": [
+        "albTargetGroup"
+      ]
+    }
+  },
+  "Outputs": {
+    "albListener": {
+      "Description": "The Arn of listener.",
+      "Value": {
+        "Fn::GetAtt": [
+          "albListener",
+          "Outputs.arn"
+        ]
+      }
+    },
+    "albTargetGroupArn": {
+      "Description": "The arn of the ALB target group.",
+      "Value": {
+        "Fn::GetAtt": [
+          "albTargetGroup",
+          "Outputs.arn"
+        ]
+      }
+    },
+    "serviceLogsGroupName": {
+      "Description": "The name of the log group.",
+      "Value": {
+        "Fn::GetAtt": [
+          "serviceLogsGroup",
+          "Outputs.name"
+        ]
+      }
+    },
+    "CvEngine213LogsGroupName": {
+      "Description": "The name of the log group.",
+      "Value": {
+        "Fn::GetAtt": [
+          "CvEngine213LogsGroup",
+          "Outputs.name"
+        ]
+      }
+    },
+    "CvEngine2142ArmLogsGroupName": {
+      "Description": "The name of the log group.",
+      "Value": {
+        "Fn::GetAtt": [
+          "CvEngine2142ArmLogsGroup",
+          "Outputs.name"
+        ]
+      }
+    },
+    "CvEngine2142AmdLogsGroupName": {
+      "Description": "The name of the log group.",
+      "Value": {
+        "Fn::GetAtt": [
+          "CvEngine2142AmdLogsGroup",
+          "Outputs.name"
+        ]
+      }
+    },
+    "serviceTaskDefinitionArn": {
+      "Description": "The arn of the service Task Definition.",
+      "Value": {
+        "Fn::GetAtt": [
+          "serviceTaskDefinition",
+          "Outputs.arn"
+        ]
+      }
+    },
+    "CvEngine213TaskDefinitionArn": {
+      "Description": "The arn of the get coco Task definition.",
+      "Value": {
+        "Fn::GetAtt": [
+          "CvEngine213TaskDefinition",
+          "Outputs.arn"
+        ]
+      }
+    },
+    "CvEngine2142ArmTaskDefinition": {
+      "Description": "The arn of the create Annotation Task definition.",
+      "Value": {
+        "Fn::GetAtt": [
+          "CvEngine2142ArmTaskDefinition",
+          "Outputs.arn"
+        ]
+      }
+    },
+    "CvEngine2142AmdTaskDefinition": {
+      "Description": "The arn of the addProject Annotation Task definition.",
+      "Value": {
+        "Fn::GetAtt": [
+          "CvEngine2142AmdTaskDefinition",
+          "Outputs.arn"
+        ]
+      }
+    },
+    "ecsServiceArn": {
+      "Description": "The ARN of the ECS service.",
+      "Value": {
+        "Fn::GetAtt": [
+          "ecsService",
+          "Outputs.arn"
+        ]
+      }
+    },
+    "httpApi": {
+      "Description": "The API ID",
+      "Value": {
+        "Fn::GetAtt": [
+          "apiEndpoint",
+          "Outputs.httpApi"
+        ]
+      }
+    },
+    "apiEndpoint": {
+      "Description": "The API Endpoint",
+      "Value": {
+        "Fn::GetAtt": [
+          "apiEndpoint",
+          "Outputs.apiEndpoint"
+        ]
+      }
+    },
+    "apiIntegrationId": {
+      "Description": "The Integration resource ID",
+      "Value": {
+        "Fn::GetAtt": [
+          "apiIntegration",
+          "Outputs.apiIntegration"
+        ]
+      }
+    },
+    "logGroupEndpointArn": {
+      "Description": "The ARN of log group.",
+      "Value": {
+        "Fn::GetAtt": [
+          "logGroupEndpoint",
+          "Outputs.arn"
+        ]
+      }
+    },
+    "stageName": {
+      "Description": "The API Gateway stage name",
+      "Value": {
+        "Fn::GetAtt": [
+          "apiStage",
+          "Outputs.stageName"
+        ]
+      }
+    },
+    "CvEngine213EventRuleArn": {
+      "Description": "The getCocoJson Event Rule Arn",
+      "Value": {
+        "Fn::GetAtt": [
+          "CvEngine213EventRule",
+          "Outputs.arn"
+        ]
+      }
+    },
+    "CvEngine2142ArmEventRuleArn": {
+      "Description": "The createAnnotation Event Rule Arn",
+      "Value": {
+        "Fn::GetAtt": [
+          "CvEngine2142ArmEventRule",
+          "Outputs.arn"
+        ]
+      }
+    },
+    "CvEngine2142AmdEventRuleArn": {
+      "Description": "The addProjectAnnotation Event Rule Arn",
+      "Value": {
+        "Fn::GetAtt": [
+          "CvEngine2142AmdEventRule",
+          "Outputs.arn"
+        ]
+      }
+    }
+  }
+}

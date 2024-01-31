@@ -1,0 +1,51 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The template used to create all resources",
+  "Parameters": {
+    "projectName": {
+      "Type": "String"
+    },
+    "cftModulesS3Bucket": {
+      "Type": "String"
+    },
+    "s3BucketName": {
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "s3Bucket": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Fn::Sub": [
+            "${cftModulesS3Bucket}/s3.json",
+            {
+              "cftModulesS3Bucket": {
+                "Ref": "cftModulesS3Bucket"
+              }
+            }
+          ]
+        },
+        "Parameters": {
+          "s3BucketName": {
+            "Ref": "s3BucketName"
+          },
+          "projectName": {
+            "Ref": "projectName"
+          }
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "bucketArn": {
+      "Description": "The Arn of the S3 bucket.",
+      "Value": {
+        "Fn::GetAtt": [
+          "s3Bucket",
+          "Outputs.arn"
+        ]
+      }
+    }
+  }
+}
